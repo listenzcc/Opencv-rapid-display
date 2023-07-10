@@ -1,3 +1,9 @@
+# Private ignores
+*.log
+
+# Local ignores
 .vscode
 
+# Python ignores
 __pycache__
+

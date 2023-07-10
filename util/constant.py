@@ -20,6 +20,7 @@ Functions:
 # Requirements and constants
 import os
 import sys
+import time
 import logging
 import numpy as np
 import pandas as pd
@@ -29,8 +30,9 @@ from pathlib import Path
 from omegaconf import OmegaConf
 from rich import print, inspect
 from dataclasses import dataclass
+from tqdm.auto import tqdm
 
-from logger import LOGGER
+from .logger import LOGGER
 
 
 # %% ---- 2023-07-10 ------------------------

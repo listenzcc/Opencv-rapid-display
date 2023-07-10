@@ -19,15 +19,20 @@ Functions:
 # %% ---- 2023-07-10 ------------------------
 # Requirements and constants
 import logging
+from pathlib import Path
 
 
 # %% ---- 2023-07-10 ------------------------
 # Function and class
+log_folder = Path(__file__).parent.parent.joinpath('log')
+log_folder.mkdir(parents=True, exist_ok=True)
+
+
 class MyLogger(object):
     name = 'OpenCV-Display'
     file_handler_log_level = logging.DEBUG
     file_handler_log_fmt = '%(asctime)s %(name)s %(levelname)-8s %(message)-40s {{%(filename)s:%(lineno)s:%(module)s:%(funcName)s}}'
-    filepath = 'log.txt'
+    filepath = log_folder.joinpath('OpenCV-Display.log')
     stream_handler_log_level = logging.DEBUG
     stream_handler_log_fmt = '%(asctime)s %(name)s %(levelname)-8s %(message)-40s {{%(filename)s:%(lineno)s}}'
 
