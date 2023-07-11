@@ -19,11 +19,14 @@ Functions:
 # %% ---- 2023-07-10 ------------------------
 # Requirements and constants
 import io
+import cv2
 import time
 import hashlib
 import requests
 import threading
 import traceback
+
+import numpy as np
 
 from .constant import *
 
@@ -47,6 +50,21 @@ class MyImage(object):
     def __init__(self):
         self.image = None
         pass
+
+    def get(self, key):
+        """Get the key information from the img dictionary
+
+        Args:
+            key (str): The key to fetch
+
+        Returns:
+            ob: The value of the key in self.image
+        """
+
+        if not key in self.image:
+            LOGGER.error('Failed to get key {}'.format(key))
+
+        return self.image.get(key, None)
 
     def compute_img_everything(self, img: Image, image_id: str, require_detail_flag=False):
         """Compute all the information from the img object
@@ -76,9 +94,11 @@ class MyImage(object):
         if img.mode != mode:
             img = img.convert(mode=mode)
         img = img.resize(self.image_size)
+        bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
         self.image = dict(
             img=img,
+            bgr=bgr,
             image_id=image_id,
             # ---------------------------------
             ext=ext,
@@ -147,7 +167,7 @@ class MyImage(object):
             self.image = None
             img = Image.open(Path(path))
             self.compute_img_everything(img, image_id)
-            print('Created image: {}'.format(self.image))
+            print('Created image: {}'.format(self.image.get('image_id')))
         except:
             LOGGER.error('Can not read image from local path: {}'.format(path))
             traceback.print_exc()
@@ -214,7 +234,18 @@ class MyImage(object):
         return self
 
 
-def load_folder(folder, limit=20):
+def read_local_images(folder, limit=20):
+    """Read the local images in the given folder with the number limit.
+
+    It supports all the files in the folder are image files.
+
+    Args:
+        folder (Path or str): The folder to read the images from.
+        limit (int, optional): The limit of reading images. Defaults to 20.
+
+    Returns:
+        list: The images in the object of MyImage
+    """
     folder = Path(folder)
     if not folder.is_dir():
         LOGGER.error('Folder does not exist: {}'.format(folder))
@@ -239,8 +270,8 @@ def load_folder(folder, limit=20):
 # %% ---- 2023-07-10 ------------------------
 # Play ground
 if __name__ == '__main__':
-    load_folder(Path(os.environ['OneDriveConsumer'],
-                'Pictures', 'DesktopPictures'))
+    read_local_images(Path(os.environ['OneDriveConsumer'],
+                           'Pictures', 'DesktopPictures'))
 
 
 # %% ---- 2023-07-10 ------------------------
