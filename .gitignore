@@ -1,5 +1,6 @@
 # Private ignores
 *.log
+time_recording.csv
 
 # Local ignores
 .vscode
