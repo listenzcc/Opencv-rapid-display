@@ -1,5 +1,5 @@
 """
-File: player.py
+File: fast-movie-player.py
 Author: Chuncheng Zhang
 Date: 2023-07-10
 Copyright & Email: chuncheng.zhang@ia.ac.cn
@@ -18,14 +18,9 @@ Functions:
 
 # %% ---- 2023-07-10 ------------------------
 # Requirements and constants
-import os
 import cv2
 # import torch
-import keyboard
-import threading
-
 import numpy as np
-
 from util.constant import *
 from util.toolbox import PreciseClock, pop, linear_interpolate
 from util.image_loader import read_local_images
@@ -33,42 +28,6 @@ from util.image_loader import read_local_images
 
 # %% ---- 2023-07-10 ------------------------
 # Function and class
-class DynamicOptions(object):
-    def __init__(self):
-        pass
-
-    def start(self):
-        self.receive_keyboard_flag = True
-        self.recording = []
-
-    def record(self, dct):
-        threading.Thread(target=self.recording.append, args=(dct, )).start()
-
-    def stop(self):
-        self.receive_keyboard_flag = False
-
-
-dy_opt = DynamicOptions()
-
-
-def cv2_poll_key(t):
-    code = cv2.pollKey()
-
-    if code == -1:
-        return code
-
-    print('Key pressed {}, {}'.format(code, t))
-
-    while cv2.pollKey() > -1:
-        continue
-
-    dy_opt.record(dict(
-        time=t,
-        code=code,
-        recordType='KeyPress'
-    ))
-    return code
-
 
 def uint8(x):
     return x.astype(np.uint8)
@@ -131,16 +90,17 @@ images = read_local_images(Path(os.environ['OneDriveConsumer'],
 
 # %% ---- 2023-07-10 ------------------------
 # Pending
-interval = 100  # milliseconds
+interval = 20  # milliseconds
 display_seconds = 60  # seconds
 frames = int(display_seconds / (interval / 1000))
 print('Display with {} frames'.format(frames))
 
-vfvsb = VeryFastVeryStableBuffer(images, m=1)
+vfvsb = VeryFastVeryStableBuffer(images)
 pc = PreciseClock(interval)
 
 for _ in range(5):
     vfvsb.auto_append()
+
 
 mats = vfvsb.pop()
 
@@ -150,60 +110,45 @@ for _ in range(vfvsb.m):
 
 cv2.waitKey()
 
-dy_opt.start()
-
-frame_idx = 0
+n = 0
 time_recording = []
 
 pc.start()
-while frame_idx < frames:
-    if pc.count() < frame_idx:
+while n < frames:
+    if pc.count() < n:
         continue
 
-    pairs = vfvsb.pop()
-    id, bgr = pairs.pop(0)
+    if n % 5 == 0:
+        pairs = vfvsb.pop()
 
-    if frame_idx % 2 == 1:
-        bgr[:100, :100] = 255
+    id, m = pairs.pop(0)
+
+    if n % 10 < 2:
+        m[:100, :100] = 255
     else:
-        bgr[:100, :100] = 0
+        m[:100, :100] = 0
+
+    # m[:100, :100] = (n % 2) * 255
 
     t = time.time()
-    cv2.imshow('Frame', bgr)
-    # cv2.waitKey(1)
-
-    cv2_poll_key(t)
-    # while cv2.pollKey() > 0:
-    #     cv2.pollKey()
-
-    time_recording.append((frame_idx, id, t))
-    dy_opt.record(dict(
-        time=t,
-        imgId=id,
-        frameIdx=frame_idx,
-        recordType='displayImage'
-    ))
+    cv2.imshow('Frame', m)
+    time_recording.append((n, id, t))
+    cv2.waitKey(1)
     print('Display {: 4d} at {:.4f} for {}'.format(
-        frame_idx, time_recording[-1][-1], id))
+        n, time_recording[-1][-1], id))
 
-    frame_idx += 1
+    n += 1
 
 
 cv2.waitKey(1)
-dy_opt.stop()
-
-table = pd.DataFrame(dy_opt.recording)
-table.to_csv('time_recording.csv')
-
 
 # %% ---- 2023-07-10 ------------------------
 # Pending
-# table = pd.DataFrame(time_recording, columns=['frameIdx', 'imageId', 'time'])
-# table.to_csv('time_recording.csv')
+table = pd.DataFrame(time_recording, columns=['frame', 'id', 'time'])
 
-# print(table)
+table.to_csv('time_recording.csv')
 
-os.system('python check_time_recording.py')
+print(table)
 
 # %%
 # %%

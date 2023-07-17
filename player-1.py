@@ -51,27 +51,26 @@ class DynamicOptions(object):
 dy_opt = DynamicOptions()
 
 
-def cv2_poll_key(t):
-    code = cv2.pollKey()
-
-    if code == -1:
-        return code
-
-    print('Key pressed {}, {}'.format(code, t))
-
-    while cv2.pollKey() > -1:
-        continue
-
-    dy_opt.record(dict(
-        time=t,
-        code=code,
-        recordType='KeyPress'
-    ))
-    return code
-
-
 def uint8(x):
     return x.astype(np.uint8)
+
+
+def receive_keyboard():
+    def _receive_keyboard():
+        LOGGER.debug('Start receive keyboard')
+        while dy_opt.receive_keyboard_flag:
+            event = keyboard.read_event(suppress=True)
+            t = time.time()
+            if event.event_type == keyboard.KEY_DOWN:
+                print('Key pressed {}'.format(event))
+                dy_opt.record(dict(
+                    time=t,
+                    event=event,
+                    recordType='keyDown'
+                ))
+        LOGGER.debug('Stop receive keyboard')
+
+    threading.Thread(target=_receive_keyboard, daemon=True).start()
 
 
 class VeryFastVeryStableBuffer(object):
@@ -151,6 +150,7 @@ for _ in range(vfvsb.m):
 cv2.waitKey()
 
 dy_opt.start()
+receive_keyboard()
 
 frame_idx = 0
 time_recording = []
@@ -172,9 +172,8 @@ while frame_idx < frames:
     cv2.imshow('Frame', bgr)
     # cv2.waitKey(1)
 
-    cv2_poll_key(t)
-    # while cv2.pollKey() > 0:
-    #     cv2.pollKey()
+    while cv2.pollKey() > 0:
+        cv2.pollKey()
 
     time_recording.append((frame_idx, id, t))
     dy_opt.record(dict(
@@ -199,6 +198,7 @@ table.to_csv('time_recording.csv')
 # %% ---- 2023-07-10 ------------------------
 # Pending
 # table = pd.DataFrame(time_recording, columns=['frameIdx', 'imageId', 'time'])
+
 # table.to_csv('time_recording.csv')
 
 # print(table)
