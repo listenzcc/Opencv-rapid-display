@@ -46,5 +46,8 @@ print(table)
 fig = px.scatter(table, x='frame', y='interval', color='mark', opacity=0.5)
 fig.show()
 
+fig = px.violin(table, y='interval', color='mark', box=True)
+fig.show()
+
 # %% ---- 2023-07-11 ------------------------
 # Pending

@@ -19,7 +19,7 @@ Functions:
 # %% ---- 2023-07-10 ------------------------
 # Requirements and constants
 import cv2
-import torch
+# import torch
 import numpy as np
 from util.constant import *
 from util.toolbox import PreciseClock, pop, linear_interpolate
@@ -122,6 +122,14 @@ while n < frames:
         pairs = vfvsb.pop()
 
     id, m = pairs.pop(0)
+
+    if n % 10 < 2:
+        m[:100, :100] = 255
+    else:
+        m[:100, :100] = 0
+
+    # m[:100, :100] = (n % 2) * 255
+
     t = time.time()
     cv2.imshow('Frame', m)
     time_recording.append((n, id, t))
