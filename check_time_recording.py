@@ -20,6 +20,8 @@ Functions:
 # Requirements and constants
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from rich import print
 
@@ -28,7 +30,7 @@ from rich import print
 # Function and class
 raw_data = pd.read_csv('time_recording.csv', index_col=0)
 table = raw_data.query(
-    'recordType == "displayImage"').copy()
+    'recordEvent == "displayImage"').copy()
 table.index = range(len(table))
 print(table)
 
@@ -48,17 +50,42 @@ print(table)
 # %% ---- 2023-07-11 ------------------------
 # Pending
 fig = px.scatter(table, x='frameIdx', y='interval', color='mark', opacity=0.5)
-fig.show()
+trace1 = fig.data
+# fig.show()
 
 fig = px.violin(table, y='interval', color='mark', box=True)
-fig.show()
+trace2 = fig.data
+# fig.show()
+
 
 # %% ---- 2023-07-11 ------------------------
 # Pending
-fig = px.scatter(raw_data, x='time', y='time', color='recordType')
-fig.show()
+df1 = raw_data.query('recordEvent == "displayImage"').copy()
+df1['imgType'] = df1['imgId'].map(lambda d: d.split('.')[0])
+
+df2 = raw_data.query('recordEvent == "keyPress"').copy()
+df2['imgType'] = 'target'
+
+df = pd.concat([df1, df2])
+df['size'] = 10
+
+fig = px.scatter(df, x='time', y='imgType',
+                 color='recordEvent', opacity=0.5, size='size', size_max=10)
+trace3 = fig.data
+# fig.show()
 
 # %%
-raw_data
+fig = make_subplots(rows=1, cols=3, subplot_titles=(
+    'Display scatters', 'Violins histogram', 'Target vs. KeyPress'))
 
+for t in trace1:
+    fig.add_trace(t, row=1, col=1)
+
+for t in trace2:
+    fig.add_trace(t, row=1, col=2)
+
+for t in trace3:
+    fig.add_trace(t, row=1, col=3)
+
+fig.show()
 # %%

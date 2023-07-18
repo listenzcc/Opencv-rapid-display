@@ -21,7 +21,7 @@ Functions:
 
 from util.constant import *
 from util.toolbox import PreciseClock, pop, linear_interpolate, get_monitor_size
-from util.image_loader import read_local_images
+from util.image_loader import read_local_images, read_from_file_list
 
 
 # %% ---- 2023-07-10 ------------------------
@@ -102,7 +102,7 @@ def cv2_poll_key(t):
     DY_OPT.record(dict(
         time=t,
         code=code,
-        recordType='KeyPress'
+        recordEvent='keyPress'
     ))
     return code
 
@@ -250,18 +250,35 @@ class CV2FullScreen(object):
 
 # %% ---- 2023-07-10 ------------------------
 # Play ground
-images = read_local_images(Path(os.environ['OneDriveConsumer'],
-                                'Pictures', 'DesktopPictures'))
+# images = read_local_images(Path(os.environ['OneDriveConsumer'],
+#                                 'Pictures', 'DesktopPictures'))
 
-width, height = get_monitor_size()
+file_list_input = Path('src/example.csv')
+file_list_table = pd.read_csv(file_list_input, index_col=0)
+file_list = file_list_table.values.tolist()
+print(file_list)
+images, tag_table = read_from_file_list(file_list)
 
-# %%
 
+display_options = dict(
+    flip_block_flag=False,
+    counting_flag=True
+)
+
+put_text_kwargs = dict(
+    org=(10, 50),  # x, y
+    fontFace=cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+    fontScale=1,
+    thickness=2,
+    color=(0, 200, 0),
+    lineType=cv2.LINE_AA
+)
 # %% ---- 2023-07-10 ------------------------
 # Pending
 interval = 100  # milliseconds
 display_seconds = 60  # seconds
 frames = int(display_seconds / (interval / 1000))
+frames = len(file_list)
 print('Display with {} frames'.format(frames))
 
 vfvsb = VeryFastVeryStableBuffer(images, m=1)
@@ -278,6 +295,7 @@ pairs = vfvsb.pop()
 
 for _ in range(vfvsb.m):
     id, bgr = pairs.pop(0)
+    cv2.putText(bgr, 'Press any key to start...', **put_text_kwargs)
     cv2.imshow(DY_OPT.winname, cv2_full_screen.place_in_center(bgr))
     cv2.waitKey(100)
 
@@ -286,6 +304,7 @@ cv2.waitKey()
 print('Start...')
 
 DY_OPT.start()
+
 
 frame_idx = 0
 time_recording = []
@@ -298,10 +317,15 @@ while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
     pairs = vfvsb.pop()
     id, bgr = pairs.pop(0)
 
-    if frame_idx % 2 == 1:
-        bgr[:100, :100] = 255
-    else:
-        bgr[:100, :100] = 0
+    if display_options['flip_block_flag']:
+        if frame_idx % 2 == 1:
+            bgr[-100:, :100] = 255
+        else:
+            bgr[-100:, :100] = 0
+
+    if display_options['counting_flag']:
+        cv2.putText(bgr, '{} | {}'.format(
+            frame_idx, frames), **put_text_kwargs)
 
     t = time.time()
     cv2.imshow(DY_OPT.winname, cv2_full_screen.place_in_center(bgr))
@@ -313,7 +337,7 @@ while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
         time=t,
         imgId=id,
         frameIdx=frame_idx,
-        recordType='displayImage'
+        recordEvent='displayImage'
     ))
     print('Display {: 4d} at {:.4f} for {}'.format(
         frame_idx, time_recording[-1][-1], id))
@@ -335,4 +359,6 @@ os.system('python check_time_recording.py')
 # %%
 
 
+# %%
+# %%
 # %%

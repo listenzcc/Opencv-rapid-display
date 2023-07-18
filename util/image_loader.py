@@ -93,7 +93,10 @@ class MyImage(object):
         # Convert into RGB format
         if img.mode != mode:
             img = img.convert(mode=mode)
-        img = img.resize(self.image_size)
+
+        if not all((img.size[0] == self.image_size[0], img.size[1] == self.image_size[1])):
+            img = img.resize(self.image_size)
+
         bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
         self.image = dict(
@@ -167,7 +170,7 @@ class MyImage(object):
             self.image = None
             img = Image.open(Path(path))
             self.compute_img_everything(img, image_id)
-            print('Created image: {}'.format(self.image.get('image_id')))
+            # print('Created image: {}'.format(self.image.get('image_id')))
         except:
             LOGGER.error('Can not read image from local path: {}'.format(path))
             traceback.print_exc()
@@ -187,7 +190,7 @@ class MyImage(object):
             self.image = None
             img = Image.open(requests.get(url, stream=True).raw)
             self.compute_img_everything(img, image_id)
-            print('Created image: {}'.format(self.image))
+            # print('Created image: {}'.format(self.image))
         except:
             LOGGER.error('Can not read image from url: {}'.format(url))
             traceback.print_exc()
@@ -206,7 +209,7 @@ class MyImage(object):
         try:
             self.image = None
             self.compute_img_everything(img, image_id)
-            print('Created image: {}'.format(self.image))
+            # print('Created image: {}'.format(self.image))
         except:
             LOGGER.error('Can not read image from img')
             traceback.print_exc()
@@ -227,7 +230,7 @@ class MyImage(object):
             self.image = None
             img = Image.open(raw)
             self.compute_img_everything(img, image_id)
-            print('Created image: {}'.format(self.image))
+            # print('Created image: {}'.format(self.image))
         except:
             LOGGER.error('Can not read image from bytes')
             traceback.print_exc()
@@ -263,6 +266,34 @@ def read_local_images(folder, limit=20):
         len(images), len(files), folder))
 
     return images
+
+
+def read_from_file_list(file_list):
+    images = []
+    tag_table = dict()
+
+    for path, img_id, tag in tqdm(file_list, 'Reading files...'):
+        path = Path(path)
+
+        my_img = MyImage().from_local(path, img_id)
+
+        if img_id in tag_table:
+            LOGGER.warning('Repeat img_id, {} = {}'.format(
+                img_id, tag_table[img_id]))
+
+        tag_table[img_id] = tag
+
+        if my_img.image is not None:
+            images.append(my_img)
+        else:
+            LOGGER.error(
+                'Can not load image {}, {}, {}'.format(tag, img_id, path))
+
+    LOGGER.debug('Loaded {} | {} images from file_list, tags are {}'.format(
+        len(images), len(file_list), set(tag_table.keys())))
+
+    return images, tag_table
+
 
 # %%
 
