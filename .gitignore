@@ -1,5 +1,6 @@
 # Private ignores
 *.log
+src/example.csv
 time_recording.csv
 
 # Local ignores

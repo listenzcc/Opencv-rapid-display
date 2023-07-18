@@ -61,6 +61,7 @@ trace2 = fig.data
 # %% ---- 2023-07-11 ------------------------
 # Pending
 df1 = raw_data.query('recordEvent == "displayImage"').copy()
+df1 = df1[df1['imgId'].map(lambda e: not pd.isna(e))].copy()
 df1['imgType'] = df1['imgId'].map(lambda d: d.split('.')[0])
 
 df2 = raw_data.query('recordEvent == "keyPress"').copy()

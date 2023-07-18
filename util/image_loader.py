@@ -61,12 +61,16 @@ class MyImage(object):
             ob: The value of the key in self.image
         """
 
+        if all((key == 'bgr', self.image['bgr'] is None)):
+            self.image['bgr'] = cv2.cvtColor(
+                np.array(self.image['img']), cv2.COLOR_RGB2BGR)
+
         if not key in self.image:
             LOGGER.error('Failed to get key {}'.format(key))
 
         return self.image.get(key, None)
 
-    def compute_img_everything(self, img: Image, image_id: str, require_detail_flag=False):
+    def compute_img_everything(self, img: Image, img_id: str, require_detail_flag=False):
         """Compute all the information from the img object
 
         Args:
@@ -97,12 +101,12 @@ class MyImage(object):
         if not all((img.size[0] == self.image_size[0], img.size[1] == self.image_size[1])):
             img = img.resize(self.image_size)
 
-        bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        # bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
         self.image = dict(
             img=img,
-            bgr=bgr,
-            image_id=image_id,
+            bgr=None,
+            img_id=img_id,
             # ---------------------------------
             ext=ext,
             mode=mode,
@@ -133,6 +137,9 @@ class MyImage(object):
         ext = self.image['ext']
         format = self.image['format']
 
+        # Convert into BGR for cv2
+        bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
         # Write into the BytesIO
         bytes_io = io.BytesIO()
         img.save(bytes_io, format=format)
@@ -141,6 +148,7 @@ class MyImage(object):
         md5_hash = hashlib.md5()
         md5_hash.update(bytes_io.getvalue())
 
+        self.image['bytes_io'] = bgr
         self.image['bytes_io'] = bytes_io
         self.image['md5_hash'] = md5_hash
         self.image['get_bytes'] = bytes_io.getvalue
@@ -155,7 +163,10 @@ class MyImage(object):
 
         return
 
-    def from_local(self, path: Path, image_id: str):
+    def null(self):
+        return
+
+    def from_local(self, path: Path, img_id: str):
         """Init the image from a local image path,
         all the file paths that can be converted into Path objects are allowed.
 
@@ -169,14 +180,18 @@ class MyImage(object):
         try:
             self.image = None
             img = Image.open(Path(path))
-            self.compute_img_everything(img, image_id)
-            # print('Created image: {}'.format(self.image.get('image_id')))
+
+            thread = threading.Thread(
+                target=self.compute_img_everything, args=(img, img_id), daemon=True)
+            thread.start()
         except:
+            thread = threading.Thread(target=self.null, daemon=True)
+            thread.start()
             LOGGER.error('Can not read image from local path: {}'.format(path))
             traceback.print_exc()
-        return self
+        return self, thread
 
-    def from_url(self, url: str, image_id: str):
+    def from_url(self, url: str, img_id: str):
         """Init the image from a url
 
         Args:
@@ -189,14 +204,14 @@ class MyImage(object):
         try:
             self.image = None
             img = Image.open(requests.get(url, stream=True).raw)
-            self.compute_img_everything(img, image_id)
+            self.compute_img_everything(img, img_id)
             # print('Created image: {}'.format(self.image))
         except:
             LOGGER.error('Can not read image from url: {}'.format(url))
             traceback.print_exc()
         return self
 
-    def from_PIL(self, img: Image, image_id: str):
+    def from_PIL(self, img: Image, img_id: str):
         """Init the image from a Image object
 
         Args:
@@ -208,14 +223,14 @@ class MyImage(object):
         """
         try:
             self.image = None
-            self.compute_img_everything(img, image_id)
+            self.compute_img_everything(img, img_id)
             # print('Created image: {}'.format(self.image))
         except:
             LOGGER.error('Can not read image from img')
             traceback.print_exc()
         return self
 
-    def from_bytes(self, raw: bytes, image_id: str):
+    def from_bytes(self, raw: bytes, img_id: str):
         """Init the image from the raw bytes
 
         Args:
@@ -229,7 +244,7 @@ class MyImage(object):
         try:
             self.image = None
             img = Image.open(raw)
-            self.compute_img_everything(img, image_id)
+            self.compute_img_everything(img, img_id)
             # print('Created image: {}'.format(self.image))
         except:
             LOGGER.error('Can not read image from bytes')
@@ -270,12 +285,15 @@ def read_local_images(folder, limit=20):
 
 def read_from_file_list(file_list):
     images = []
+    threads = []
     tag_table = dict()
 
     for path, img_id, tag in tqdm(file_list, 'Reading files...'):
         path = Path(path)
 
-        my_img = MyImage().from_local(path, img_id)
+        my_img, thread = MyImage().from_local(path, img_id)
+        threads.append(thread)
+        images.append(my_img)
 
         if img_id in tag_table:
             LOGGER.warning('Repeat img_id, {} = {}'.format(
@@ -283,14 +301,22 @@ def read_from_file_list(file_list):
 
         tag_table[img_id] = tag
 
+    for t in tqdm(threads, 'Join threads...'):
+        t.join()
+
+    LOGGER.debug('Loading images finished.')
+
+    for my_img in images:
         if my_img.image is not None:
-            images.append(my_img)
+            pass
         else:
             LOGGER.error(
                 'Can not load image {}, {}, {}'.format(tag, img_id, path))
 
+    images = [e for e in images if e.image is not None]
+
     LOGGER.debug('Loaded {} | {} images from file_list, tags are {}'.format(
-        len(images), len(file_list), set(tag_table.keys())))
+        len(images), len(file_list), set([e for e in tag_table.values()])))
 
     return images, tag_table
 

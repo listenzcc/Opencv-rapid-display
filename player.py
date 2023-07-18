@@ -142,7 +142,7 @@ class VeryFastVeryStableBuffer(object):
     def auto_append(self):
         image = pop(self.images)
         mat1 = image.get('bgr')
-        id = image.get('image_id')
+        id = image.get('img_id')
         mat2 = pop(self.images, shift_flag=False).get('bgr')
 
         for e in linear_interpolate(mat1, mat2, self.m):
@@ -275,13 +275,14 @@ put_text_kwargs = dict(
 )
 # %% ---- 2023-07-10 ------------------------
 # Pending
-interval = 100  # milliseconds
-display_seconds = 60  # seconds
-frames = int(display_seconds / (interval / 1000))
-frames = len(file_list)
+m_value = 5
+interval = 100 / m_value  # milliseconds
+# display_seconds = 60  # seconds
+# frames = int(display_seconds / (interval / 1000))
+frames = len(file_list * m_value)
 print('Display with {} frames'.format(frames))
 
-vfvsb = VeryFastVeryStableBuffer(images, m=1)
+vfvsb = VeryFastVeryStableBuffer(images, m=m_value)
 pc = PreciseClock(interval)
 cv2_full_screen = CV2FullScreen(DY_OPT.winname)
 
@@ -314,7 +315,9 @@ while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
     if pc.count() < frame_idx:
         continue
 
-    pairs = vfvsb.pop()
+    if frame_idx % m_value == 0:
+        pairs = vfvsb.pop()
+
     id, bgr = pairs.pop(0)
 
     if display_options['flip_block_flag']:
