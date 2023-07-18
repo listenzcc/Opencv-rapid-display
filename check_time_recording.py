@@ -65,7 +65,7 @@ df1 = df1[df1['imgId'].map(lambda e: not pd.isna(e))].copy()
 df1['imgType'] = df1['imgId'].map(lambda d: d.split('.')[0])
 
 df2 = raw_data.query('recordEvent == "keyPress"').copy()
-df2['imgType'] = 'target'
+df2['imgType'] = 'keyPress'
 
 df = pd.concat([df1, df2])
 df['size'] = 10

@@ -253,11 +253,14 @@ class CV2FullScreen(object):
 # images = read_local_images(Path(os.environ['OneDriveConsumer'],
 #                                 'Pictures', 'DesktopPictures'))
 
-file_list_input = Path('src/example.csv')
-file_list_table = pd.read_csv(file_list_input, index_col=0)
-file_list = file_list_table.values.tolist()
+# file_list_input = Path('src/example.csv')
+# file_list_table = pd.read_csv(file_list_input, index_col=0)
+# file_list = file_list_table.values.tolist()
+# images, tag_table = read_from_file_list(file_list)
+
+file_list, images, tag_table = read_local_images(Path(os.environ['OneDriveConsumer'],
+                                                      'Pictures', 'DesktopPictures'))
 print(file_list)
-images, tag_table = read_from_file_list(file_list)
 
 
 display_options = dict(

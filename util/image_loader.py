@@ -61,10 +61,6 @@ class MyImage(object):
             ob: The value of the key in self.image
         """
 
-        if all((key == 'bgr', self.image['bgr'] is None)):
-            self.image['bgr'] = cv2.cvtColor(
-                np.array(self.image['img']), cv2.COLOR_RGB2BGR)
-
         if not key in self.image:
             LOGGER.error('Failed to get key {}'.format(key))
 
@@ -101,11 +97,11 @@ class MyImage(object):
         if not all((img.size[0] == self.image_size[0], img.size[1] == self.image_size[1])):
             img = img.resize(self.image_size)
 
-        # bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
         self.image = dict(
             img=img,
-            bgr=None,
+            bgr=bgr,
             img_id=img_id,
             # ---------------------------------
             ext=ext,
@@ -137,9 +133,6 @@ class MyImage(object):
         ext = self.image['ext']
         format = self.image['format']
 
-        # Convert into BGR for cv2
-        bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-
         # Write into the BytesIO
         bytes_io = io.BytesIO()
         img.save(bytes_io, format=format)
@@ -148,7 +141,6 @@ class MyImage(object):
         md5_hash = hashlib.md5()
         md5_hash.update(bytes_io.getvalue())
 
-        self.image['bytes_io'] = bgr
         self.image['bytes_io'] = bytes_io
         self.image['md5_hash'] = md5_hash
         self.image['get_bytes'] = bytes_io.getvalue
@@ -175,7 +167,9 @@ class MyImage(object):
             image_id (str): The id of the image.
 
         Returns:
-            dict: The img info of the image
+            self (MyImage);
+            thread (Thread): The current thread of processing the image,
+                             wait it until finishes.
         """
         try:
             self.image = None
@@ -252,25 +246,35 @@ class MyImage(object):
         return self
 
 
-def read_local_images(folder, limit=20):
+def read_local_images(folder, limit=200):
     """Read the local images in the given folder with the number limit.
 
     It supports all the files in the folder are image files.
 
+    It uses the read_from_file_list() to read the files.
+
     Args:
-        folder (Path or str): The folder to read the images from.
+        folder (Path or str): The folder to read the images from;
         limit (int, optional): The limit of reading images. Defaults to 20.
 
     Returns:
-        list: The images in the object of MyImage
+        file_list (list): The file_list;
+        images (list): The images in the object of MyImage;
+        tag_table (dict): The tag table of the img_id.
+
     """
     folder = Path(folder)
     if not folder.is_dir():
         LOGGER.error('Folder does not exist: {}'.format(folder))
         return
 
-    files = [f for f in tqdm(folder.iterdir(), 'Find files')
-             if f.is_file()][:limit]
+    # (path, img_id, tag)
+    file_list = [(path, 'nothing.' + path.name, 'nothing')
+                 for path in tqdm(folder.iterdir(), 'Find files')
+                 if path.is_file()][:limit]
+
+    images, tag_table = read_from_file_list(file_list)
+    return file_list, images, tag_table
 
     raws = [MyImage().from_local(f, f.name)
             for f in tqdm(files, 'Load images')]
@@ -284,6 +288,19 @@ def read_local_images(folder, limit=20):
 
 
 def read_from_file_list(file_list):
+    """Read images from the file_list.
+
+    The elements are the tuple of (path, img_id, tag) 
+
+    Args:
+        file_list (list): The file_list to be read;
+        path (Path): The path of the image;
+        img_id (str): The img_id of the image;
+        tag (str): The tag of the image;
+
+    Returns:
+        _type_: _description_
+    """
     images = []
     threads = []
     tag_table = dict()
