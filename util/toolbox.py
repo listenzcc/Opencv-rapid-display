@@ -18,6 +18,7 @@ Functions:
 
 # %% ---- 2023-07-11 ------------------------
 # Requirements and constants
+
 from .constant import *
 
 
@@ -109,6 +110,19 @@ def linear_interpolate(arr1, arr2, m=5):
         output.append(arr1 * r1 + arr2 * r2)
 
     return output
+
+
+def get_monitor_size():
+    """Get the monitor size of the main monitor
+
+    Returns:
+        width: The width in pixels of the monitor;
+        height: The height in pixels of the monitor.
+    """
+    user32 = ctypes.windll.user32
+    width = user32.GetSystemMetrics(0)
+    height = user32.GetSystemMetrics(1)
+    return width, height
 
 
 # %% ---- 2023-07-11 ------------------------
