@@ -45,7 +45,7 @@ class MyImage(object):
     Use the self.image as the img information.
     """
 
-    image_size = (800, 600)
+    image_size = (800, 800)
 
     def __init__(self):
         self.image = None

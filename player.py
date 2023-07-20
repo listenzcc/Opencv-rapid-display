@@ -20,12 +20,69 @@ Functions:
 # Requirements and constants
 
 from util.constant import *
-from util.toolbox import PreciseClock, pop, linear_interpolate, get_monitor_size
+from util.toolbox import PreciseClock, pop, linear_interpolate
 from util.image_loader import read_local_images, read_from_file_list
 
+from util.parallel.parallel import Parallel
+
+
+# %%
+parallel_port = 'CEFC'
+key_frame_interval = 100
+m_value_interpolate_between_key_frames = 1
+
+
+read_images_options = dict(
+    # Toggle if read images from configuration file,
+    # read_from_file_list_flag option overrides others.
+    read_from_file_list_flag=False,  # True,
+
+    # Toggle if read images from image folder
+    read_from_local_folder_flag=True,  # False,
+)
+
+file_list_file_input = Path('src/example.csv')
+
+images_local_folder_input = Path(
+    os.environ.get('OneDriveConsumer', '/'), 'Pictures', 'DesktopPictures')
+
+assert any([e for e in read_images_options.values()]
+           ), 'At least choose one image reading method'
+
+display_options = dict(
+    # Toggle for the flip block OSD on the bottom-left corner
+    flip_block_flag=True,
+
+    # Toggle for the (current | total) OSD on the upper-left corner
+    counting_flag=True,
+)
+
+quite_key_code = 'q'
+
+put_text_kwargs = dict(
+    org=(10, 50),  # x, y
+    fontFace=cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+    fontScale=1,
+    thickness=2,
+    color=(0, 200, 0),
+    lineType=cv2.LINE_AA
+)
+
+parallel_tag = dict(
+    rsvp_session_start=11,
+    rsvp_session_stop=12,
+    other_image_display=1,
+    target_image_display=2,
+    keypress_event=3,
+)
+
+parallel = Parallel()
+parallel.reset(parallel_port)
 
 # %% ---- 2023-07-10 ------------------------
 # Function and class
+
+
 class DynamicOptions(object):
     """
     Dynamic Options during the runtime.
@@ -73,38 +130,24 @@ class DynamicOptions(object):
 DY_OPT = DynamicOptions()
 
 
-def cv2_poll_key(t):
-    """Record the key-press during the latest poll,
-    it also refreshes the cv2.imshow.
-    So, call it after every cv2.imshow.
-
-    For now, it only records the first key-press during the range.
+def keypress_callback(key):
+    """Callback function for keypress events.
 
     Args:
-        t (float): The timestamp in float.
-
-    Returns:
-        int: The key code for the press, -1 refers no key pressed.
+        key (key): The key being pressed.
     """
-    code = cv2.pollKey()
+    t = time.time()
+    parallel.send(parallel_tag['keypress_event'])
 
-    if code == -1:
-        return code
-
-    print('Key pressed {}, {}'.format(code, t))
-
-    if code == ord('q'):
+    if key.name == quite_key_code:
         DY_OPT.stop()
-
-    while cv2.pollKey() > -1:
-        continue
 
     DY_OPT.record(dict(
         time=t,
-        code=code,
+        code=key,
         recordEvent='keyPress'
     ))
-    return code
+    return
 
 
 def uint8(x):
@@ -250,42 +293,33 @@ class CV2FullScreen(object):
 
 # %% ---- 2023-07-10 ------------------------
 # Play ground
-# images = read_local_images(Path(os.environ['OneDriveConsumer'],
-#                                 'Pictures', 'DesktopPictures'))
 
-# file_list_input = Path('src/example.csv')
-# file_list_table = pd.read_csv(file_list_input, index_col=0)
-# file_list = file_list_table.values.tolist()
-# images, tag_table = read_from_file_list(file_list)
+# ---------------------------------------------------------------------
+# Read images from local folder
+# All the images are tagged as 'nothing'.
+if read_images_options['read_from_local_folder_flag']:
+    file_list, images, tag_table = read_local_images(images_local_folder_input)
+    LOGGER.debug('Loaded {} | {} images from folder {}'.format(
+        len(images), len(file_list), images_local_folder_input))
 
-file_list, images, tag_table = read_local_images(Path(os.environ['OneDriveConsumer'],
-                                                      'Pictures', 'DesktopPictures'))
-print(file_list)
+# ---------------------------------------------------------------------
+# Read images from file_list_input
+if read_images_options['read_from_file_list_flag']:
+    file_list = pd.read_csv(file_list_file_input, index_col=0).values.tolist()
+    images, tag_table = read_from_file_list(file_list)
+    LOGGER.debug('Loaded {} | {} images from file {}'.format(
+        len(images), len(file_list), file_list_file_input))
 
 
-display_options = dict(
-    flip_block_flag=False,
-    counting_flag=True
-)
-
-put_text_kwargs = dict(
-    org=(10, 50),  # x, y
-    fontFace=cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
-    fontScale=1,
-    thickness=2,
-    color=(0, 200, 0),
-    lineType=cv2.LINE_AA
-)
 # %% ---- 2023-07-10 ------------------------
 # Pending
-m_value = 5
-interval = 100 / m_value  # milliseconds
-# display_seconds = 60  # seconds
-# frames = int(display_seconds / (interval / 1000))
-frames = len(file_list * m_value)
-print('Display with {} frames'.format(frames))
+interval = key_frame_interval / \
+    m_value_interpolate_between_key_frames  # milliseconds
+frames = len(file_list * m_value_interpolate_between_key_frames)
+LOGGER.debug('Display with {} frames'.format(frames))
 
-vfvsb = VeryFastVeryStableBuffer(images, m=m_value)
+vfvsb = VeryFastVeryStableBuffer(
+    images, m=m_value_interpolate_between_key_frames)
 pc = PreciseClock(interval)
 cv2_full_screen = CV2FullScreen(DY_OPT.winname)
 
@@ -307,36 +341,61 @@ print('Press any key to continue')
 cv2.waitKey()
 print('Start...')
 
+# %%
+# Start the RSVP session
+
 DY_OPT.start()
-
-
 frame_idx = 0
 time_recording = []
 
+# ! Make sure suppress the key,
+# ! to avoid it affects the timing.
+keyboard.on_press(keypress_callback, suppress=True)
+
 pc.start()
+parallel.send(parallel_tag['rsvp_session_start'])
 while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
     if pc.count() < frame_idx:
         continue
 
-    if frame_idx % m_value == 0:
+    key_frame_flag = frame_idx % m_value_interpolate_between_key_frames == 0
+
+    if key_frame_flag:
         pairs = vfvsb.pop()
 
     id, bgr = pairs.pop(0)
 
+    # Draw the flip block in the left-bottom corner,
+    # - m_value_interpolate_between_key_frames > 1 refers multiple interpolating, it is white when key frame is displayed;
+    # - m_value_interpolate_between_key_frames == 1 refers no interpolating, it flips between white and black between frames.
     if display_options['flip_block_flag']:
-        if frame_idx % 2 == 1:
-            bgr[-100:, :100] = 255
+        if m_value_interpolate_between_key_frames > 1:
+            if key_frame_flag:
+                bgr[-100:, :100] = 255
+            else:
+                bgr[-100:, :100] = 0
         else:
-            bgr[-100:, :100] = 0
+            if frame_idx % 2 == 0:
+                bgr[-100:, :100] = 255
+            else:
+                bgr[-100:, :100] = 0
 
+    # Draw the counting notion in the left-top corner
     if display_options['counting_flag']:
         cv2.putText(bgr, '{} | {}'.format(
             frame_idx, frames), **put_text_kwargs)
 
     t = time.time()
     cv2.imshow(DY_OPT.winname, cv2_full_screen.place_in_center(bgr))
+    cv2.pollKey()
 
-    cv2_poll_key(t)
+    # Send displaying code for target image (2), and other image (1)
+    # The sending only operates on the first frame of the interpolating
+    if key_frame_flag:
+        if id.startswith('target'):
+            parallel.send(parallel_tag['target_image_display'])
+        else:
+            parallel.send(parallel_tag['other_image_display'])
 
     time_recording.append((frame_idx, id, t))
     DY_OPT.record(dict(
@@ -350,6 +409,11 @@ while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
 
     frame_idx += 1
 
+# The RSVP session stops
+parallel.send(parallel_tag['rsvp_session_stop'])
+
+# Recover the keyboard hook
+keyboard.unhook_all()
 
 cv2.waitKey(1)
 DY_OPT.stop()

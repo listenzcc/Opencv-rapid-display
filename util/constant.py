@@ -24,6 +24,7 @@ import sys
 import time
 import ctypes
 import logging
+import keyboard
 import threading
 import numpy as np
 import pandas as pd

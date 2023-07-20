@@ -29,6 +29,9 @@ from rich import print
 # %% ---- 2023-07-11 ------------------------
 # Function and class
 raw_data = pd.read_csv('time_recording.csv', index_col=0)
+if not 'code' in raw_data.columns:
+    raw_data['code'] = ''
+
 table = raw_data.query(
     'recordEvent == "displayImage"').copy()
 table.index = range(len(table))
@@ -70,7 +73,7 @@ df2['imgType'] = 'keyPress'
 df = pd.concat([df1, df2])
 df['size'] = 10
 
-fig = px.scatter(df, x='time', y='imgType',
+fig = px.scatter(df, x='time', y='imgType', hover_data='code',
                  color='recordEvent', opacity=0.5, size='size', size_max=10)
 trace3 = fig.data
 # fig.show()
