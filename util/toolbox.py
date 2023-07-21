@@ -93,6 +93,9 @@ def linear_interpolate(arr1, arr2, m=5):
 
     r1 * arr1 + r2 * arr2
 
+    arr1: 1.0 --------> 0.0
+    arr2: 0.0 --------> 1.0
+
     Args:
         arr1 (np.Array): High-dimensional array.
         arr2 (np.Array): High-dimensional array, the shape is as the same as arr1.

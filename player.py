@@ -366,8 +366,8 @@ while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
     id, bgr = pairs.pop(0)
 
     # Draw the flip block in the left-bottom corner,
-    # - m_value_interpolate_between_key_frames > 1 refers multiple interpolating, it is white when key frame is displayed;
-    # - m_value_interpolate_between_key_frames == 1 refers no interpolating, it flips between white and black between frames.
+    # - m_value_interpolate_between_key_frames > 1 refers linear interpolating with the value, it is white when key frame is displayed;
+    # - m_value_interpolate_between_key_frames == 1 refers no interpolating, it flips between white and black in frames.
     if display_options['flip_block_flag']:
         if m_value_interpolate_between_key_frames > 1:
             if key_frame_flag:
@@ -426,9 +426,4 @@ print(DY_OPT.save_recording('time_recording.csv'))
 # Call the check_time_recording function.
 os.system('python check_time_recording.py')
 
-# %%
-
-
-# %%
-# %%
 # %%
