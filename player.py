@@ -20,7 +20,7 @@ Functions:
 # Requirements and constants
 
 from util.constant import *
-from util.toolbox import PreciseClock, pop, linear_interpolate
+from util.toolbox import pop, linear_interpolate
 from util.image_loader import read_local_images, read_from_file_list
 
 from util.parallel.parallel import Parallel
@@ -29,9 +29,10 @@ from util.parallel.parallel import Parallel
 # %%
 parallel_port = 'CEFC'
 key_frame_interval = 100
-m_value_interpolate_between_key_frames = 1
+m_value_interpolate_between_key_frames = 5
 
-fps_timer = fpstimer.FPSTimer(1000 / key_frame_interval)
+fps_timer = fpstimer.FPSTimer(
+    1000 / key_frame_interval * m_value_interpolate_between_key_frames)
 
 read_images_options = dict(
     # Toggle if read images from configuration file,
@@ -314,14 +315,11 @@ if read_images_options['read_from_file_list_flag']:
 
 # %% ---- 2023-07-10 ------------------------
 # Pending
-interval = key_frame_interval / \
-    m_value_interpolate_between_key_frames  # milliseconds
 frames = len(file_list * m_value_interpolate_between_key_frames)
 LOGGER.debug('Display with {} frames'.format(frames))
 
 vfvsb = VeryFastVeryStableBuffer(
     images, m=m_value_interpolate_between_key_frames)
-pc = PreciseClock(interval)
 cv2_full_screen = CV2FullScreen(DY_OPT.winname)
 
 
@@ -353,11 +351,9 @@ time_recording = []
 # ! to avoid it affects the timing.
 keyboard.on_press(keypress_callback, suppress=True)
 
-pc.start()
 parallel.send(parallel_tag['rsvp_session_start'])
+fps_timer.sleep()
 while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
-    if pc.count() < frame_idx:
-        continue
 
     key_frame_flag = frame_idx % m_value_interpolate_between_key_frames == 0
 
@@ -409,6 +405,8 @@ while (frame_idx < frames) and DY_OPT.rsvp_loop_flag:
         frame_idx, time_recording[-1][-1], id))
 
     frame_idx += 1
+
+    fps_timer.sleep()
 
 # The RSVP session stops
 parallel.send(parallel_tag['rsvp_session_stop'])

@@ -25,39 +25,6 @@ from .constant import *
 # %% ---- 2023-07-11 ------------------------
 # Function and class
 
-class PreciseClock(object):
-    """
-    Precise clock class for count by intervals
-    """
-
-    def __init__(self, interval=100):
-        """Initialize the clock with the given interval
-
-        Args:
-            interval (int, optional): How many milliseconds the interval is. Defaults to 100.
-        """
-        self.interval = interval
-        self.magic = 1000 / interval
-        pass
-
-    def start(self):
-        """Start the clock.
-
-        Returns:
-            float: The starting time.
-        """
-        self.tic = time.time()
-        return self.tic
-
-    def count(self):
-        """How many intervals are passed since the start of the clock.
-
-        Returns:
-            int: The number of intervals.
-        """
-        passed = time.time() - self.tic
-        return int(passed * self.magic)
-
 
 def pop(lst, idx=0, shift_flag=True):
     """Pop the lst's idx-th element from the lst.
