@@ -43,7 +43,7 @@ print(table)
 times = table['time'].to_numpy() * 1000
 table.loc[1:, 'interval'] = times[1:] - times[:-1]
 
-table = table.loc[1:]
+table = table.loc[2:]
 
 table['mark'] = table['imgId'].map(
     lambda e: 'key' if not pd.isna(e) else 'interpolate')
