@@ -31,6 +31,7 @@ parallel_port = 'CEFC'
 key_frame_interval = 100
 m_value_interpolate_between_key_frames = 1
 
+fps_timer = fpstimer.FPSTimer(1000 / key_frame_interval)
 
 read_images_options = dict(
     # Toggle if read images from configuration file,
