@@ -71,11 +71,11 @@ put_text_kwargs = dict(
 )
 
 parallel_tag = dict(
-    rsvp_session_start=11,
-    rsvp_session_stop=12,
-    other_image_display=1,
-    target_image_display=2,
-    keypress_event=3,
+    rsvp_session_start=16,
+    rsvp_session_stop=32,
+    other_image_display=2,
+    target_image_display=4,
+    keypress_event=8,
 )
 
 parallel = Parallel()
